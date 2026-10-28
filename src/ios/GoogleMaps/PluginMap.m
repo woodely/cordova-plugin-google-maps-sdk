@@ -96,7 +96,7 @@
         [plugin setCommandDelegate:cdvViewController.commandDelegate];
       }
       
-      [cdvViewController registerPlugin:plugin withPluginName:pluginId];
+      PGMRegisterPluginInstance(cdvViewController, plugin, pluginId);
       [plugin pluginInitialize];
 
       //NSLog(@"--->loadPlugin : %@ className : %@, plugin : %@", pluginId, className, plugin);

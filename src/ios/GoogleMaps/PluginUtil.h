@@ -18,6 +18,36 @@
 #import "PluginCAAnimationDelegate.h"
 #import <Cordova/CDVCommandDelegate.h>
 
+// Cordova iOS 8 stores dynamically registered plugin objects by Objective-C
+// class name. That makes multiple instances of PluginMap (and per-map overlay
+// plugins) overwrite one another. Keep a unique registry key for each service
+// name so Cordova resolves each map's service to its own plugin instance.
+static inline void PGMRegisterPluginInstance(CDVViewController *viewController, CDVPlugin *plugin, NSString *pluginName) {
+  NSMutableDictionary *pluginObjects = (NSMutableDictionary *)viewController.pluginObjects;
+  NSMutableDictionary *pluginsMap = (NSMutableDictionary *)viewController.pluginsMap;
+  NSString *serviceName = [pluginName lowercaseString];
+  NSString *instanceKey = [NSString stringWithFormat:@"%@:%@", NSStringFromClass([plugin class]), serviceName];
+
+  @synchronized (pluginObjects) {
+    [pluginObjects setObject:plugin forKey:instanceKey];
+    [pluginsMap setObject:instanceKey forKey:serviceName];
+  }
+}
+
+static inline void PGMUnregisterPluginInstance(CDVViewController *viewController, NSString *pluginName) {
+  NSMutableDictionary *pluginObjects = (NSMutableDictionary *)viewController.pluginObjects;
+  NSMutableDictionary *pluginsMap = (NSMutableDictionary *)viewController.pluginsMap;
+  NSString *serviceName = [pluginName lowercaseString];
+
+  @synchronized (pluginObjects) {
+    NSString *instanceKey = [pluginsMap objectForKey:serviceName];
+    if (instanceKey != nil) {
+      [pluginObjects removeObjectForKey:instanceKey];
+      [pluginsMap removeObjectForKey:serviceName];
+    }
+  }
+}
+
 typedef void (^MYCompletionHandler)(NSError *error);
 
 // Switch statement in Objective-C

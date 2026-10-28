@@ -163,6 +163,8 @@
   if (![self.viewPlugins objectForKey:mapId]) return;
 
   CDVPlugin<IPluginView> *pluginView = [self.viewPlugins objectForKey:mapId];
+  CDVViewController *cdvViewController = (CDVViewController *)self.viewController;
+  NSArray *scopedPluginNames = nil;
 
   if ([mapId hasPrefix:@"streetview_"]) {
     PluginStreetViewPanorama *pluginSV = (PluginStreetViewPanorama *)pluginView;
@@ -174,6 +176,7 @@
 
   } else {
     PluginMap *pluginMap = (PluginMap *)pluginView;
+    scopedPluginNames = [[pluginMap.mapCtrl.plugins allKeys] copy];
     pluginMap.isRemoved = YES;
     [pluginMap pluginUnload];
     [self.pluginLayer removePluginOverlay:pluginMap.mapCtrl];
@@ -184,6 +187,11 @@
     pluginMap.mapCtrl = nil;
     pluginMap = nil;
   }
+
+  for (NSString *pluginName in scopedPluginNames) {
+    PGMUnregisterPluginInstance(cdvViewController, pluginName);
+  }
+  PGMUnregisterPluginInstance(cdvViewController, mapId);
 
   [self.viewPlugins removeObjectForKey:mapId];
 }
@@ -225,7 +233,6 @@
         
         // Create an instance of the Map class everytime.
         PluginMap *pluginMap = [PluginMap new];
-        [pluginMap pluginInitialize];
         pluginMap.mapCtrl = viewCtrl;
         
         // Hack:
@@ -239,7 +246,7 @@
             [pluginMap setCommandDelegate:cdvViewController.commandDelegate];
         }
         
-        [cdvViewController registerPlugin:pluginMap withPluginName:mapId];
+        PGMRegisterPluginInstance(cdvViewController, pluginMap, mapId);
         [pluginMap pluginInitialize];
         
         [self.viewPlugins setObject:pluginMap forKey:mapId];
@@ -440,7 +447,7 @@
       [pluginStreetView setCommandDelegate:cdvViewController.commandDelegate];
     }
     
-    [cdvViewController registerPlugin:pluginStreetView withPluginName:panoramaId];
+    PGMRegisterPluginInstance(cdvViewController, pluginStreetView, panoramaId);
     [pluginStreetView pluginInitialize];
 
     [self.viewPlugins setObject:pluginStreetView forKey:panoramaId];
